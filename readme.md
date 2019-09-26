@@ -1,8 +1,32 @@
 # Live Patching Demonstration
 
-There are multiple solutions for patching a binary during runtime.
-The interesting ones are those that do not block the application, eg freeze it via locking mechanisms.
-This is usually not required.
+Hot patching, also known as live patching or dynamic software updating, is the application of patches without
+shutting down and restarting the system or the program concerned.
+This addresses problems related to unavailability of service provided by the system or the program.
+
+There are trivial solutions for certain kinds of applications to archive zero-downtime as described in the next section. 
+A more involved way of hot-patching rewrites instructions in hot / loaded memory pages.
+
+This repository contains a proof of concept implementation of a library targeting C ABI and C++ (Italium) ABI that
+favours the idea of a binary patch repository / registry.
+Read on for a bit of a context or skip right to the [Function patching](#function-patching) section.
+
+Table of Contents
+=================
+
+* About hot-patching
+  * [Zero-downtime full replacement](#zero-downtime-full-replacement)
+  * [dlopen patching](#dlopen-patching)
+  * [Function patching](#function-patching)
+    * [OS, compiler and machine dependant](#os-compiler-and-machine-dependant)
+    * [Notes on C   specifics](#notes-on-c-specifics)
+    * [Compiler optimizations](#compiler-optimizations)
+ * [About this library](#about-this-library)
+* [How to use](#how-to-use)
+* [Build](#build)
+* [Tests and Documentation](#tests-and-documentation)
+* [License](#license)
+
 
 ### Zero-downtime full replacement
 The probably most safe live-patching method is to embed support for a "soft" restart, so replacing the entire
@@ -33,13 +57,20 @@ The next patching method is able to hot patch statically linked code, but uses `
 
 Function patching rewrites executable memory pages. If no compiler support for function padding is available,
 the first few instructions of the to-be-patched method are overwritten with an unconditional jump instruction.
-The instruction is five bytes in length and therefore also requires our target method to be at least 5 bytes long.
-One byte represents the opcode, the other four bytes represent a 32bit relative offset. 
+The 32bit offset jump instruction is five bytes in length, the 64bit offset `jmp` instruction is 14 bytes in length.
+This minimal length imposes the same same minimal length for our target method.
 
-The function signature of the replacement must be identical.
+```asm
+EB cb	JMP rel8	Jump short, relative, displacement relative to next instruction.
+E9 cw	JMP rel16	Jump near, relative, displacement relative to next instruction.
+E9 cd	JMP rel32	Jump near, relative, displacement relative to next instruction.
+```
 
-There is a trade-off to be considered of security / stability through patchable methods vs runtime speed.  
-Because this method adds an indirection and enforces inlining to be off for patchable functions.
+If that precondition is not hold or the function signature differs, a live-patch cannot be performed.
+
+**Runtime implications:**
+The trade-off of security / stability through patchable methods vs runtime speed has to be considered.  
+This method adds an indirection and enforces inlining to be off for patchable functions.
 
 #### OS, compiler and machine dependant
 This patching method is machine specific and also operating system specific.
@@ -94,6 +125,8 @@ This repository is split into a demonstration application and the patching libra
 When build, the build system will also already compile the demonstrational patches. 
 
 How does it work:
+
+![Registry Patch Flow](./doc/arch.png)
 
 1. The patching library will, on request, contact a patch registry (which happens to be the `registry/meta.json` file in this repo)
 to retrieve meta information about new available patches. There are of course patches available.
@@ -156,7 +189,7 @@ in which case the application gracefully crashes.
 
 ## Build
 
-The buildsystem is cmake. This repository is self-contained.
+The buildsystem is cmake. This repository is almost self-contained with the exception of the test framework.
 All external libraries are provided in `vendor` directories and are BSD or MIT licensed.
 
 Run `mkdir build && cd build` and `cmake ../ && cmake --build .` to build the project.
@@ -164,14 +197,18 @@ You need a compiler that supports C++17.
 
 ## Tests and Documentation
 
-Use `cmake test` on the command line to start the test suite. Google Test is used.
+Use `cmake test` on the command line to start the test suite.
+Google Test is used and will be downloaded and compiled if the libraries are not available in PATH.
 
 The library is documented in a Doxygen compatible format.
 If doxygen is installed, use `cmake --build . --target doc` in the build directory.
 
-## Not implemented
+## Limitations
 
-Right now this library only adds patches (`dlopen`), but never removes (`dlclose`) non used ones.
+* Right now this library only adds patches (`dlopen`), but never removes (`dlclose`) non used ones.
+  Either dlopens own reference count could be used (so that for each `Patch` destructor `dlclose` is called)
+  or a DlOpen RAII shared pointer class is created. 
+* The registry is a proof-of-concept local file, no checksum, no auth implementation
 
 ## License
 

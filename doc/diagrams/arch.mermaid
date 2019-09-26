@@ -1,0 +1,11 @@
+graph LR;
+  registry(Patch Registry)
+  dlopen[dlopen patch p1.so]
+  dlsym(dlsym relevant parts)
+  supported(Atomically live-patch)
+  nosupport(Lock required live-patch)
+
+  registry -->|Available Patches| dlopen
+  dlopen -->|filter symbols| dlsym
+  dlsym -->|Compiler w/ live patch support| supported
+  dlsym -->|W/out live patch support| nosupport

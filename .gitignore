@@ -3,3 +3,6 @@ cmake-build-*
 .idea
 registry/*.so
 registry/*.o
+
+node_modules
+package-lock.json
