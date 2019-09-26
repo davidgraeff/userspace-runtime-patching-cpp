@@ -1,0 +1,14 @@
+[
+  {
+    "new_version": 1,
+    "about": "Patches the member function output text",
+    "symbol_name": "_ZN9DemoClass9say_helloEiSt17basic_string_viewIcSt11char_traitsIcEE",
+    "patch_file": "registry/p1.so"
+  },
+  {
+    "new_version": 1,
+    "about": "Patches the c function output text",
+    "symbol_name": "_Z13say_hello_funiSt17basic_string_viewIcSt11char_traitsIcEE",
+    "patch_file": "registry/p1.so"
+  }
+]
